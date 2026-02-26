@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FiUser, FiMail, FiLock, FiUserPlus, FiAlertCircle } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
+import API_BASE from '../config';
 import './Auth.css';
 
 export default function Register() {
@@ -44,7 +45,7 @@ export default function Register() {
         setLoading(true);
         setError('');
         try {
-            const res = await axios.post(`http://localhost:3000/api/auth/google`, {
+            const res = await axios.post(`${API_BASE}/api/auth/google`, {
                 googleToken: credentialResponse.credential,
             });
 

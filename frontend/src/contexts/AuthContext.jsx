@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE from '../config';
 
 const AuthContext = createContext(null);
 
-const API_URL = 'http://localhost:3000/api/auth';
+const API_URL = `${API_BASE}/api/auth`;
 
 // Simple JWT decode (no library needed)
 function decodeToken(token) {

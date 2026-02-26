@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from 'axios';
+import API_BASE from '../config';
 import Avatar from '../components/Avatar';
 import AvatarBuilder from '../components/AvatarBuilder';
 import { getSavedAvatar } from '../components/avatarParts';
 import { FiPlus, FiLogIn, FiLogOut, FiSun, FiMoon, FiCopy, FiCheck, FiEdit2, FiX } from 'react-icons/fi';
 import './Dashboard.css';
 
-const API_URL = 'http://localhost:3000/api/room';
+const API_URL = `${API_BASE}/api/room`;
 
 export default function Dashboard() {
     const { user, logout } = useAuth();

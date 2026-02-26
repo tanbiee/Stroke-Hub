@@ -14,10 +14,11 @@ import Avatar from '../components/Avatar';
 import { getSavedAvatar } from '../components/avatarParts';
 import useWebRTC from '../hooks/useWebRTC';
 import axios from 'axios';
+import API_BASE from '../config';
 import { FiArrowLeft, FiSun, FiMoon, FiUsers, FiCopy, FiCheck, FiX } from 'react-icons/fi';
 import './Room.css';
 
-const API_URL = 'http://localhost:3000/api/room';
+const API_URL = `${API_BASE}/api/room`;
 
 export default function Room() {
     const { roomId } = useParams();
