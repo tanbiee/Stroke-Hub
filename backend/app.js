@@ -40,11 +40,8 @@ const corsOptions = {
     credentials: true,
 };
 
-// CORS must be the VERY FIRST middleware
+// CORS must be the VERY FIRST middleware - this also handles preflight OPTIONS automatically
 app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
 
 // Fix for Google OAuth Cross-Origin-Opener-Policy error
 app.use((req, res, next) => {
