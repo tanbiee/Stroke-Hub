@@ -131,7 +131,7 @@ export default function Login() {
                             onSuccess={handleGoogleSuccess}
                             onError={handleGoogleError}
                             theme="filled_black"
-                            width="100%"
+                            width="350"
                             text="signin_with"
                             shape="pill"
                         />

@@ -174,7 +174,7 @@ export default function Register() {
                             onSuccess={handleGoogleSuccess}
                             onError={handleGoogleError}
                             theme="filled_black"
-                            width="100%"
+                            width="350"
                             text="signup_with"
                             shape="pill"
                         />

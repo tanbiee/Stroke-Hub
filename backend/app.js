@@ -17,30 +17,33 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const app = express();
 const server = http.createServer(app);
 
-// Allow any localhost port during development
+// Allow localhost (dev) AND production CLIENT_URL
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin || origin.startsWith('http://localhost')) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
+        // Allow requests with no origin (like mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+        // Allow any localhost port for development
+        if (origin.startsWith('http://localhost')) return callback(null, true);
+        // Allow the production frontend URL
+        if (origin === CLIENT_URL) return callback(null, true);
+        callback(new Error('Not allowed by CORS'));
     },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
 };
 
 app.use(cors(corsOptions));
+
 // Fix for Google OAuth Cross-Origin-Opener-Policy error
 app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
 });
 
 const io = new Server(server, { cors: corsOptions });
 
 //middleware
-app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' })); // increased for image snapshots
 
 //routes
