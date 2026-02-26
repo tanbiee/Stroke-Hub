@@ -451,23 +451,97 @@ export const socketHandler = (io) => {
 
 function handleLeaveRoom(socket, roomId, io) {
   socket.leave(roomId);
+  const userId = socket.user._id.toString();
 
   if (roomUsers[roomId]) {
     roomUsers[roomId] = roomUsers[roomId].filter(
-      (u) => u.userId !== socket.user._id.toString()
+      (u) => u.userId !== userId
     );
 
     io.to(roomId).emit("room-users", roomUsers[roomId]);
-    io.to(roomId).emit("user-left", {
-      userId: socket.user._id.toString(),
-    });
+    io.to(roomId).emit("user-left", { userId });
     io.to(roomId).emit("system-message", {
       message: `${socket.user.username} left the room`,
       timestamp: Date.now(),
     });
 
-    // Clean up empty rooms after a grace period — purge from memory AND database
-    // This allows React Strict Mode users to disconnect and reconnect without nuking the lobby immediately.
+    // ===== Handle mid-game disconnect =====
+    const game = games[roomId];
+    if (game) {
+      const wasDrawer = game.currentDrawer === userId;
+
+      // Remove the player from the game's player list
+      game.players = game.players.filter(p => p.userId !== userId);
+
+      // If fewer than 2 players remain, end the game
+      if (game.players.length < 2) {
+        clearInterval(game.timer);
+        io.to(roomId).emit("game-ended", { scores: game.scores });
+
+        // Update stats
+        if (game.scores.length > 0) {
+          const playerIds = game.scores.map(p => p.userId);
+          User.updateMany({ _id: { $in: playerIds } }, { $inc: { gamesPlayed: 1 } })
+            .catch(err => console.error(err));
+          const winner = game.scores.reduce((max, obj) => (obj.score > max.score ? obj : max), game.scores[0]);
+          if (winner.score > 0) {
+            User.findByIdAndUpdate(winner.userId, { $inc: { gamesWon: 1 } })
+              .catch(err => console.error(err));
+          }
+        }
+        delete games[roomId];
+      } else if (wasDrawer) {
+        // If the drawer left, end the current round immediately and move to next turn
+        clearInterval(game.timer);
+        io.to(roomId).emit("round-end", {
+          word: game.currentWord || '???',
+          scores: game.scores,
+        });
+
+        // Adjust drawer index since we removed a player before this index
+        if (game.currentDrawerIndex >= game.players.length) {
+          game.currentDrawerIndex = 0;
+          game.round++;
+
+          if (game.round > game.maxRounds) {
+            io.to(roomId).emit("game-ended", { scores: game.scores });
+            const playerIds = game.scores.map(p => p.userId);
+            User.updateMany({ _id: { $in: playerIds } }, { $inc: { gamesPlayed: 1 } })
+              .catch(err => console.error(err));
+            if (game.scores.length > 0) {
+              const winner = game.scores.reduce((max, obj) => (obj.score > max.score ? obj : max), game.scores[0]);
+              if (winner.score > 0) {
+                User.findByIdAndUpdate(winner.userId, { $inc: { gamesWon: 1 } })
+                  .catch(err => console.error(err));
+              }
+            }
+            delete games[roomId];
+            return;
+          }
+        }
+
+        // Move to next turn after short delay
+        setTimeout(() => {
+          if (!games[roomId]) return;
+          game.currentDrawer = game.players[game.currentDrawerIndex].userId;
+          game.status = "selecting";
+          game.correctGuesses = [];
+
+          io.to(roomId).emit("next-turn", {
+            round: game.round,
+            maxRounds: game.maxRounds,
+            scores: game.scores,
+          });
+
+          const drawerSocket = findSocketByUserId(io, game.currentDrawer, roomId);
+          if (drawerSocket) {
+            drawerSocket.emit("select-word", getRandomWords(3));
+          }
+        }, 2000);
+      }
+    }
+
+    // Clean up empty rooms after a grace period
     if (roomUsers[roomId].length === 0) {
       console.log(`Room ${roomId} is empty. Scheduling cleanup...`);
       roomDeleteTimeouts[roomId] = setTimeout(async () => {
@@ -479,7 +553,6 @@ function handleLeaveRoom(socket, roomId, io) {
             delete games[roomId];
           }
 
-          // Delete room, whiteboard, and chat from MongoDB
           try {
             await Room.deleteOne({ roomId });
             await Whiteboard.deleteOne({ roomId });
@@ -490,7 +563,7 @@ function handleLeaveRoom(socket, roomId, io) {
           }
         }
         delete roomDeleteTimeouts[roomId];
-      }, 10000); // 10 seconds grace period
+      }, 10000);
     }
   }
 }
