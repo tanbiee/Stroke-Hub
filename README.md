@@ -37,9 +37,9 @@ StrokeHub is a real-time multiplayer drawing and word-guessing game (inspired by
    ```
 
 ### 2. Frontend Setup
-1. Navigate to the `frontend/vite-project` folder:
+1. Navigate to the `frontend` folder:
    ```bash
-   cd frontend/vite-project
+   cd frontend
    ```
 2. Install dependencies:
    ```bash
@@ -53,7 +53,7 @@ StrokeHub is a real-time multiplayer drawing and word-guessing game (inspired by
 ## Folder Structure 📂
 
 - `/backend/` - Node.js & Express server, Socket.io event handlers, and MongoDB models.
-- `/frontend/vite-project/` - React frontend powered by Vite, containing components, hooks (`useWebRTC`), pages, and styles.
+- `/frontend/` - React frontend powered by Vite, containing components, hooks (`useWebRTC`), pages, and styles.
 
 ## License 📜
 
