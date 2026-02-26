@@ -17,45 +17,30 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const app = express();
 const server = http.createServer(app);
 
-// Allowed origins: localhost for dev + production Vercel URL
-const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:3000',
-    'https://stroke-hub.vercel.app',
-    CLIENT_URL, // Also allow whatever is set in env var
-];
-
+// ===== CORS Configuration =====
+// Allow ALL origins for now to eliminate CORS issues during deployment
 const corsOptions = {
-    origin: function (origin, callback) {
-        // Allow requests with no origin (Postman, server-to-server, etc.)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        callback(new Error('Not allowed by CORS'));
-    },
+    origin: true, // Reflects the request origin — allows ALL origins
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
 };
 
-// CORS must be the VERY FIRST middleware - this also handles preflight OPTIONS automatically
+// CORS middleware — must be FIRST
 app.use(cors(corsOptions));
 
-// Fix for Google OAuth Cross-Origin-Opener-Policy error
+// Cross-Origin headers for Google OAuth popup
 app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
 });
 
 const io = new Server(server, { cors: corsOptions });
 
-//middleware
-app.use(express.json({ limit: '10mb' })); // increased for image snapshots
+// Middleware
+app.use(express.json({ limit: '10mb' }));
 
-//routes
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/room", roomRoutes);
 
@@ -64,16 +49,28 @@ app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-//socket handler
+// Socket handler
 socketHandler(io);
 
-mongoose.connect(MONGO_URI)
-    .then(() => {
-        console.log('Connected to MongoDB');
-        server.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        })
-    })
-    .catch((error) => {
-        console.error('Error connecting to MongoDB:', error);
+// Start server — ALWAYS start listening even if MongoDB fails,
+// so Render doesn't get a "port scan timeout" error
+const startServer = async () => {
+    try {
+        if (!MONGO_URI) {
+            console.error('WARNING: MONGO_URI is not set! Check your environment variables.');
+        } else {
+            await mongoose.connect(MONGO_URI);
+            console.log('Connected to MongoDB');
+        }
+    } catch (error) {
+        console.error('Error connecting to MongoDB:', error.message);
+    }
+
+    // Always start listening on the port
+    server.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`CLIENT_URL: ${CLIENT_URL}`);
     });
+};
+
+startServer();
