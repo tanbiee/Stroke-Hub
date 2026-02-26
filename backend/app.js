@@ -17,22 +17,34 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const app = express();
 const server = http.createServer(app);
 
-// Allow localhost (dev) AND production CLIENT_URL
+// Allowed origins: localhost for dev + production Vercel URL
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'https://stroke-hub.vercel.app',
+    CLIENT_URL, // Also allow whatever is set in env var
+];
+
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl, Postman)
+        // Allow requests with no origin (Postman, server-to-server, etc.)
         if (!origin) return callback(null, true);
-        // Allow any localhost port for development
-        if (origin.startsWith('http://localhost')) return callback(null, true);
-        // Allow the production frontend URL
-        if (origin === CLIENT_URL) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
         callback(new Error('Not allowed by CORS'));
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
 };
 
+// CORS must be the VERY FIRST middleware
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 // Fix for Google OAuth Cross-Origin-Opener-Policy error
 app.use((req, res, next) => {
