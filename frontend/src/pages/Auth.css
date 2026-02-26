@@ -178,6 +178,38 @@
     text-decoration: underline;
 }
 
+.auth-separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 4px 0;
+}
+
+.auth-separator::before,
+.auth-separator::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-glass);
+}
+
+.auth-separator span {
+    padding: 0 10px;
+}
+
+.google-btn-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.google-btn-wrapper > div {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
 /* Loading screen */
 .loading-screen {
     min-height: 100vh;

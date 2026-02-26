@@ -1,0 +1,26 @@
+{
+  "name": "scribble",
+  "version": "1.0.0",
+  "description": "StrokeHub is a real-time multiplayer drawing and word-guessing game (inspired by Scribble.io) with a modern Gen-Z twist, glassmorphism UI, and built-in native WebRTC Voice Chat!",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install --prefix backend & npm install --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tanbiee/Stroke-Hub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tanbiee/Stroke-Hub/issues"
+  },
+  "homepage": "https://github.com/tanbiee/Stroke-Hub#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FiMail, FiLock, FiLogIn, FiAlertCircle } from 'react-icons/fi';
+import { GoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 import './Auth.css';
 
 export default function Login() {
@@ -9,7 +11,7 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login } = useAuth(); // Note: We might bypass this context login for Google, or create a specific function for it
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -25,6 +27,29 @@ export default function Login() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setLoading(true);
+        setError('');
+        try {
+            const res = await axios.post(`http://localhost:3000/api/auth/google`, {
+                googleToken: credentialResponse.credential,
+            });
+
+            // If backend verification succeeds, it returns standard session token
+            localStorage.setItem('token', res.data.token);
+            // Quick force reload to auth context can pick up the new token
+            window.location.href = '/dashboard';
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google Login failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        setError('Google authentication was cancelled or failed.');
     };
 
     return (
@@ -95,6 +120,21 @@ export default function Login() {
                             </>
                         )}
                     </button>
+
+                    <div className="auth-separator">
+                        <span>OR</span>
+                    </div>
+
+                    <div className="google-btn-wrapper">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            theme="filled_black"
+                            width="100%"
+                            text="signin_with"
+                            shape="pill"
+                        />
+                    </div>
 
                     <p className="auth-switch">
                         Don't have an account? <Link to="/register">Sign Up</Link>

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FiUser, FiMail, FiLock, FiUserPlus, FiAlertCircle } from 'react-icons/fi';
+import { GoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 import './Auth.css';
 
 export default function Register() {
@@ -36,6 +38,28 @@ export default function Register() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setLoading(true);
+        setError('');
+        try {
+            const res = await axios.post(`http://localhost:3000/api/auth/google`, {
+                googleToken: credentialResponse.credential,
+            });
+
+            // If backend verification succeeds, it returns standard session token
+            localStorage.setItem('token', res.data.token);
+            window.location.href = '/dashboard';
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google Sign-up failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        setError('Google authentication was cancelled or failed.');
     };
 
     return (
@@ -139,6 +163,21 @@ export default function Register() {
                             </>
                         )}
                     </button>
+
+                    <div className="auth-separator">
+                        <span>OR</span>
+                    </div>
+
+                    <div className="google-btn-wrapper">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            theme="filled_black"
+                            width="100%"
+                            text="signup_with"
+                            shape="pill"
+                        />
+                    </div>
 
                     <p className="auth-switch">
                         Already have an account? <Link to="/login">Sign In</Link>

@@ -30,6 +30,13 @@ const corsOptions = {
     credentials: true,
 };
 
+app.use(cors(corsOptions));
+// Fix for Google OAuth Cross-Origin-Opener-Policy error
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    next();
+});
+
 const io = new Server(server, { cors: corsOptions });
 
 //middleware
