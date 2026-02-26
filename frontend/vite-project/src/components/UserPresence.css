@@ -1,0 +1,169 @@
+/* ===== User Presence ===== */
+.user-presence {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    /* The original .user-presence block did not have margin-bottom,
+       but the provided "Code Edit" seems to imply it should be here.
+       Assuming it's a new addition to .user-presence. */
+    margin-bottom: 10px;
+}
+
+/* New .badge-drawer styles from the provided "Code Edit" */
+.badge-drawer {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+/* Kick Button */
+.kick-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    margin-left: auto;
+    opacity: 0.5;
+}
+
+.kick-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    opacity: 1;
+}
+
+.presence-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.presence-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.presence-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+.presence-item:hover {
+    background: var(--bg-glass);
+}
+
+.presence-item.is-me {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.presence-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+}
+
+.presence-avatar-wrap .avatar-svg {
+    border-radius: 50%;
+    border: 2px solid var(--border-glass);
+}
+
+.presence-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    background: var(--success);
+    border: 2px solid var(--bg-tertiary);
+    border-radius: 50%;
+}
+
+.presence-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.presence-name {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.presence-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 8px 0;
+}
+
+/* ===== Voice Chat Styles ===== */
+.mic-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.mic-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.mic-toggle-btn .muted-icon {
+    color: #EF4444;
+    /* Red color for muted state */
+}
+
+/* Speaking Indicator Ring */
+.presence-avatar-wrap.is-speaking::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 2px solid #10B981;
+    /* Green glow for speaking */
+    animation: speak-pulse 1.5s infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes speak-pulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.5;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    }
+
+    100% {
+        transform: scale(1.05);
+        opacity: 1;
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+}

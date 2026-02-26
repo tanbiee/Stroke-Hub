@@ -1,0 +1,145 @@
+/* ===== Avatar Builder ===== */
+.avatar-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Preview */
+.avatar-preview-area {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0 8px;
+}
+
+.avatar-preview-area .avatar-svg {
+    filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.3));
+}
+
+/* Tabs */
+.avatar-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 0 2px 4px;
+    scrollbar-width: thin;
+}
+
+.avatar-tab {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-full);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.avatar-tab:hover {
+    border-color: var(--accent-primary);
+}
+
+.avatar-tab.active {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+/* Options grid */
+.avatar-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+}
+
+.avatar-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: 2px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    aspect-ratio: 1;
+}
+
+.avatar-option:hover {
+    border-color: var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.avatar-option.selected {
+    border-color: var(--accent-primary);
+    background: rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.option-check {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    color: var(--accent-primary);
+    font-size: 12px;
+    background: var(--bg-secondary);
+    border-radius: 50%;
+    padding: 1px;
+}
+
+/* Color swatches */
+.color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Actions */
+.avatar-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.avatar-actions .btn {
+    font-size: 0.82rem;
+}
+
+/* ===== Avatar Modal ===== */
+.avatar-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: fadeIn 0.2s ease;
+}
+
+.avatar-modal {
+    width: 90%;
+    max-width: 420px;
+    padding: 24px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.avatar-modal h3 {
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.avatar-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}

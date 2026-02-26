@@ -1,0 +1,157 @@
+===============================================================
+  SCRIBBLE.IO CLONE — DEVELOPMENT APPROACH LOG
+===============================================================
+
+Project: Scribble.io - Multiplayer Drawing & Word Guessing Game
+Tech Stack: React 19 + Vite (Frontend) | Express + Socket.io + MongoDB (Backend)
+Started: 2026-02-25
+
+===============================================================
+PHASE 1: BACKEND FOUNDATION (Pre-existing)
+===============================================================
+Approach:
+- Backend uses Express.js with ES module syntax (type: "module")
+- Authentication via JWT (jsonwebtoken) with bcrypt password hashing
+- MongoDB via Mongoose for data persistence
+- Socket.io for real-time WebSocket communication
+- MVC folder structure: model/ controller/ routes/ middleware/ sockets/
+- Environment variables via dotenv (.env file)
+- RESTful API design: /api/auth (register, login), /api/room (create, get)
+- Socket middleware verifies JWT token before allowing connection
+- Whiteboard model stores strokes as array of {type, color, size, points[]}
+- Room model tracks host (ObjectId ref) and participants array
+
+Status: Partially built. Socket handler has syntax error (stray 'a' on line 5).
+Will be fixed when we integrate full socket events.
+
+===============================================================
+PHASE 2: FRONTEND SETUP & AUTHENTICATION
+===============================================================
+Approach:
+- Using Vite + React 19 as the frontend framework
+- React Router DOM v7 for client-side routing with protected routes
+- Axios for HTTP API calls to backend (base URL: http://localhost:3000)
+- socket.io-client for WebSocket connection to backend
+- react-icons for UI icons (pencil, eraser, send, etc.)
+
+Authentication Strategy:
+- AuthContext (React Context API) manages global auth state
+- JWT token stored in localStorage for persistence across refreshes
+- Token decoded client-side to extract user info (id, username)
+- ProtectedRoute component wraps authenticated pages
+- Redirects unauthenticated users to /login automatically
+
+Design System:
+- CSS custom properties (variables) for consistent theming
+- Dark mode as default with light mode toggle support
+- Glassmorphism aesthetic: semi-transparent backgrounds with blur
+- Inter font from Google Fonts for modern typography
+- Smooth micro-animations on hover, focus, and transitions
+- Responsive layout using CSS Grid and Flexbox
+
+Pages:
+- /login → Login page (email + password)
+- /register → Register page (username + email + password)
+- /dashboard → Room lobby (create/join rooms) [Protected]
+- /room/:roomId → Whiteboard room [Protected]
+
+Context Providers:
+- AuthContext → user state, login/register/logout functions
+- ThemeContext → dark/light mode toggle, persisted in localStorage
+- SocketContext → Socket.io connection lifecycle, tied to auth token
+
+Status: DONE. Build verified successfully.
+
+===============================================================
+PHASE 3: ROOM & LOBBY
+===============================================================
+Approach:
+- Dashboard page with two glass-card panels: Create Room + Join Room
+- Room IDs are auto-generated 6-char uppercase alphanumeric strings
+- Join room validates room existence via GET /api/room/:roomId
+- Room page layout: 3-panel flexbox (users sidebar | canvas | chat)
+- User presence tracked in-memory on server (roomUsers map)
+- Socket.io emits room-users list on join/leave events
+- Host badge displayed based on room.host matching current user
+- Copy-to-clipboard for room ID sharing
+
+Status: DONE.
+
+===============================================================
+PHASE 4: WHITEBOARD CANVAS
+===============================================================
+Approach:
+- HTML5 Canvas element using useRef for 2D context access
+- Stroke-based drawing (not pixel-based) for efficient sync
+- Each stroke = {type, color, size, points[{x,y}]}
+- Mouse events: mousedown (start), mousemove (draw), mouseup (stop)
+- Touch events supported for tablet/mobile
+- Real-time sync: local draw emits to Socket.io, server broadcasts
+- Undo/Redo uses stroke history stack (array slice/push)
+- Eraser uses canvas globalCompositeOperation: 'destination-out'
+- Strokes persisted to MongoDB Whiteboard model
+- Save snapshot: canvas.toDataURL('image/png') → download link
+- Color picker: 12 preset colors + custom <input type="color">
+- Brush size: range slider 1-20px with circular preview
+
+Status: DONE.
+
+===============================================================
+PHASE 5: CHAT & GAME LOGIC
+===============================================================
+Approach:
+
+Chat:
+- Real-time messaging via Socket.io send-message/chat-message events
+- Messages stored in ChatMessage MongoDB model
+- System messages for join/leave notifications
+- Auto-scroll using useRef + scrollIntoView
+- In game mode, chat input doubles as guess input
+
+Game Logic (Server-Side):
+- In-memory game state per room (games map)
+- Word list: ~100 drawable English words
+- Game flow: start → select word → play round → end → next turn
+- Drawer gets 3 random word options, selects one
+- Guessers see word as underscores: "_ _ _ _ _"
+- Correct guess = case-insensitive string match
+- Scoring: Guesser 10-50 pts (time-based), Drawer 10 pts
+- Timer: 60 seconds per round, server-managed
+- 3 rounds per game, then game ends with final scores
+
+Status: DONE.
+
+===============================================================
+FRONTEND-BACKEND ALIGNMENT FIXES
+===============================================================
+Issues Found & Fixed:
+
+1. Dashboard Join API Call:
+   - BEFORE: Only checked if room exists (GET), then navigated
+   - AFTER: POST /:roomId/join to register as participant, then navigate
+   - Also calls join when host enters their own created room
+
+2. Room Host ID Comparison:
+   - BEFORE: res.data.host (MongoDB ObjectId) === user.id (JWT string)
+   - AFTER: res.data.host.toString() === user.id (both strings now)
+   - Backend route updated to return host/participants as strings
+
+3. Room Join on Mount:
+   - BEFORE: Room page only fetched room data on mount
+   - AFTER: Calls POST /:roomId/join first, then fetches data
+   - Ensures direct URL navigation also registers participation
+
+4. Socket Listener Cleanup Conflicts:
+   - BEFORE: socket.off('correct-guess') removed ALL listeners
+   - AFTER: Named handler references so off() only removes own handlers
+   - Chat.jsx and Room.jsx both safely listen to 'correct-guess'
+   - Applied to all 16 socket events in Room.jsx + 3 in Chat.jsx
+
+5. Backend Room Route:
+   - GET /:roomId now returns host.toString() and participants.map(p => p.toString())
+   - Consistent string comparison on frontend
+
+6. User Model:
+   - Removed unused { Model } import from mongoose
+
+Status: DONE. Build verified successfully.

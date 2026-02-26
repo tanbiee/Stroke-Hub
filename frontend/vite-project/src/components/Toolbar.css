@@ -1,0 +1,141 @@
+/* ===== Toolbar ===== */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--bg-glass);
+    border-bottom: 1px solid var(--border-glass);
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.toolbar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.toolbar-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border-glass);
+    flex-shrink: 0;
+}
+
+/* Color Palette */
+.color-palette {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: wrap;
+    max-width: 200px;
+}
+
+.color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.color-swatch:hover {
+    transform: scale(1.2);
+}
+
+.color-swatch.active {
+    border-color: var(--text-primary);
+    transform: scale(1.15);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.color-swatch:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.color-custom {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+}
+
+.color-custom::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-custom::-webkit-color-swatch {
+    border: 2px solid var(--border-glass);
+    border-radius: 50%;
+}
+
+/* Brush Size Slider */
+.brush-slider {
+    width: 80px;
+    height: 4px;
+    accent-color: var(--accent-primary);
+    cursor: pointer;
+}
+
+.brush-slider:disabled {
+    opacity: 0.4;
+}
+
+.brush-preview {
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+/* Disabled state */
+.toolbar .btn-icon:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.toolbar .btn-icon:disabled:hover {
+    color: var(--text-secondary);
+    border-color: var(--border-glass);
+    background: var(--bg-glass);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .toolbar {
+        padding: 6px 10px;
+        gap: 8px;
+    }
+
+    .toolbar-label {
+        display: none;
+    }
+
+    .color-palette {
+        max-width: 140px;
+    }
+
+    .brush-slider {
+        width: 60px;
+    }
+}

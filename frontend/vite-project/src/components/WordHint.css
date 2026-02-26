@@ -1,0 +1,33 @@
+/* ===== Word Hint ===== */
+.word-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-full);
+}
+
+.hint-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.hint-word {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    font-family: monospace;
+}
+
+.word-hint.drawer .hint-word {
+    color: var(--success);
+}
+
+.word-hint.guesser .hint-word {
+    color: var(--accent-tertiary);
+}
