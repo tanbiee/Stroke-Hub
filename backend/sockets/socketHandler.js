@@ -125,6 +125,29 @@ export const socketHandler = (io) => {
       } catch (err) {
         console.error("Error loading whiteboard:", err);
       }
+
+      // If a game is already active, sync the late joiner
+      const existingGame = games[roomId];
+      if (existingGame && existingGame.status !== "ended") {
+        const uid = socket.user._id.toString();
+        // Add them to players/scores if not already present
+        if (!existingGame.players.find(p => p.userId === uid)) {
+          existingGame.players.push({ userId: uid, username: socket.user.username });
+          existingGame.scores.push({ userId: uid, username: socket.user.username, score: 0 });
+        }
+        // Send current game state to the new joiner
+        socket.emit("game-state-sync", {
+          round: existingGame.round,
+          maxRounds: existingGame.maxRounds,
+          scores: existingGame.scores,
+          drawer: existingGame.currentDrawer,
+          hint: existingGame.hintArray ? existingGame.hintArray.join("") : "",
+          timeLeft: existingGame.timeLeft,
+          status: existingGame.status,
+        });
+        // Update everyone's scores (so they see the new player)
+        io.to(roomId).emit("scores-update", existingGame.scores);
+      }
     });
 
     socket.on("leave-room", (roomId) => {
@@ -132,6 +155,11 @@ export const socketHandler = (io) => {
     });
 
     // ===== DRAWING EVENTS =====
+
+    // Real-time incremental drawing (point-by-point, no DB persistence)
+    socket.on("drawing", ({ roomId, point }) => {
+      socket.to(roomId).emit("drawing", point);
+    });
 
     socket.on("draw", async ({ roomId, strokeData }) => {
       // Broadcast to others in room
@@ -265,9 +293,21 @@ export const socketHandler = (io) => {
       }
     });
 
-    socket.on("start-game", (roomId) => {
+    socket.on("start-game", async (roomId) => {
       const users = roomUsers[roomId];
       if (!users || users.length < 2) return;
+
+      // Clear whiteboard from DB and all clients on new game
+      try {
+        await Whiteboard.findOneAndUpdate(
+          { roomId },
+          { strokes: [] },
+          { upsert: true }
+        );
+      } catch (err) {
+        console.error("Error clearing board on game start:", err);
+      }
+      io.to(roomId).emit("clear-board");
 
       const game = {
         roomId,
@@ -294,6 +334,7 @@ export const socketHandler = (io) => {
         round: game.round,
         maxRounds: game.maxRounds,
         scores: game.scores,
+        drawer: game.currentDrawer,
       });
 
       // Send word options to drawer
@@ -531,6 +572,7 @@ function handleLeaveRoom(socket, roomId, io) {
             round: game.round,
             maxRounds: game.maxRounds,
             scores: game.scores,
+            drawer: game.currentDrawer,
           });
 
           const drawerSocket = findSocketByUserId(io, game.currentDrawer, roomId);
@@ -624,6 +666,7 @@ function endRound(roomId, io) {
       round: game.round,
       maxRounds: game.maxRounds,
       scores: game.scores,
+      drawer: game.currentDrawer,
     });
 
     // Send word options to new drawer

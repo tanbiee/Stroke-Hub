@@ -9,10 +9,27 @@
     margin-bottom: 10px;
 }
 
-/* New .badge-drawer styles from the provided "Code Edit" */
+/* Drawing badge */
 .badge-drawer {
     background: var(--gradient-primary);
     color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    animation: drawer-pulse 2s ease-in-out infinite;
+}
+
+@keyframes drawer-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 /* Kick Button */

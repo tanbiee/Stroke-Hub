@@ -13,6 +13,7 @@ import WordHint from '../components/WordHint';
 import Avatar from '../components/Avatar';
 import { getSavedAvatar } from '../components/avatarParts';
 import useWebRTC from '../hooks/useWebRTC';
+import useSoundEffects from '../hooks/useSoundEffects';
 import axios from 'axios';
 import API_BASE from '../config';
 import { FiArrowLeft, FiSun, FiMoon, FiUsers, FiCopy, FiCheck, FiX } from 'react-icons/fi';
@@ -58,6 +59,12 @@ export default function Room() {
 
     // WebRTC connection
     const { isMicOn, toggleMic, speakingUsers } = useWebRTC(socket, roomId, user, isConnected, users);
+
+    // Sound effects
+    const { playGameStart, playCorrectGuess, playConfetti, playTimerTick, playRoundEnd } = useSoundEffects();
+
+    // Drawer tracking
+    const [currentDrawerId, setCurrentDrawerId] = useState(null);
 
     // Fetch room data and join via API
     useEffect(() => {
@@ -120,6 +127,10 @@ export default function Room() {
             setGameState(state);
             setScores(state.scores || []);
             setRoundMessage('');
+            setStrokes([]);
+            setUndoneStrokes([]);
+            if (state.drawer) setCurrentDrawerId(state.drawer);
+            playGameStart();
         };
         const handleSelectWordOptions = (options) => {
             setWordOptions(options);
@@ -128,6 +139,7 @@ export default function Room() {
         const handleWordSelected = ({ hint, drawer }) => {
             setCurrentWord(hint);
             setIsDrawer(drawer === user?.id);
+            setCurrentDrawerId(drawer);
             setWordOptions([]);
             setStrokes([]);
             setUndoneStrokes([]);
@@ -138,9 +150,11 @@ export default function Room() {
         const handleCorrectGuess = ({ username, scores: newScores }) => {
             setScores(newScores);
             setRoundMessage(`${username} guessed correctly! 🎉`);
+            playCorrectGuess();
 
             if (username === user?.username) {
                 setShowConfetti(true);
+                playConfetti();
                 setTimeout(() => setShowConfetti(false), 3500);
             }
 
@@ -150,7 +164,9 @@ export default function Room() {
             setScores(newScores);
             setCurrentWord('');
             setIsDrawer(false);
+            setCurrentDrawerId(null);
             setRoundMessage(`The word was: ${word}`);
+            playRoundEnd();
         };
         const handleNextTurn = (state) => {
             setGameState(state);
@@ -159,6 +175,7 @@ export default function Room() {
             setUndoneStrokes([]);
             setCurrentWord('');
             setIsDrawer(false);
+            if (state.drawer) setCurrentDrawerId(state.drawer);
         };
         const handleGameEnded = ({ scores: finalScores }) => {
             setScores(finalScores);
@@ -172,13 +189,16 @@ export default function Room() {
                 const winner = finalScores.reduce((max, obj) => (obj.score > max.score ? obj : max), finalScores[0]);
                 if (winner.userId === user?.id && winner.score > 0) {
                     setShowConfetti(true);
+                    playConfetti();
                     setTimeout(() => setShowConfetti(false), 6000);
                 }
             }
+            setCurrentDrawerId(null);
             setShowLeaderboard(true);
         };
         const handleTimer = (time) => {
             setTimer(time);
+            if (time > 0 && time <= 5) playTimerTick();
         };
         const handleHintUpdate = (newHint) => {
             setCurrentWord(prev => {
@@ -191,6 +211,30 @@ export default function Room() {
         const handleKicked = () => {
             alert("You have been kicked from the room by the host.");
             navigate('/dashboard');
+        };
+
+        // Real-time drawing from others
+        const handleRemoteDrawing = (pointData) => {
+            if (canvasRef.current && canvasRef.current.drawRemotePoint) {
+                canvasRef.current.drawRemotePoint(pointData);
+            }
+        };
+
+        // Mid-game join sync
+        const handleGameStateSync = (state) => {
+            setGameState({ round: state.round, maxRounds: state.maxRounds, scores: state.scores });
+            setScores(state.scores || []);
+            if (state.drawer) {
+                setCurrentDrawerId(state.drawer);
+                setIsDrawer(state.drawer === user?.id);
+            }
+            if (state.hint) setCurrentWord(state.hint);
+            if (state.timeLeft) setTimer(state.timeLeft);
+        };
+
+        // Scores update (when new player joins mid-game)
+        const handleScoresUpdate = (newScores) => {
+            setScores(newScores);
         };
 
         socket.on('room-users', handleRoomUsers);
@@ -211,6 +255,9 @@ export default function Room() {
         socket.on('timer', handleTimer);
         socket.on('hint-update', handleHintUpdate);
         socket.on('you-were-kicked', handleKicked);
+        socket.on('drawing', handleRemoteDrawing);
+        socket.on('game-state-sync', handleGameStateSync);
+        socket.on('scores-update', handleScoresUpdate);
 
         return () => {
             socket.emit('leave-room', roomId);
@@ -232,6 +279,9 @@ export default function Room() {
             socket.off('timer', handleTimer);
             socket.off('hint-update', handleHintUpdate);
             socket.off('you-were-kicked', handleKicked);
+            socket.off('drawing', handleRemoteDrawing);
+            socket.off('game-state-sync', handleGameStateSync);
+            socket.off('scores-update', handleScoresUpdate);
         };
     }, [socket, isConnected, roomId, user, navigate]);
 
@@ -244,6 +294,13 @@ export default function Room() {
         }
         setStrokes(prev => [...prev, strokeData]);
         setUndoneStrokes([]);
+    }, [socket, isConnected, roomId]);
+
+    // Incremental drawing — emits point-by-point for real-time sync
+    const handleDrawing = useCallback((pointData) => {
+        if (socket && isConnected) {
+            socket.emit('drawing', { roomId, point: pointData });
+        }
     }, [socket, isConnected, roomId]);
 
     const handleUndo = useCallback(() => {
@@ -275,11 +332,11 @@ export default function Room() {
     }, [socket, isConnected, roomId]);
 
     const handleSaveSnapshot = useCallback(() => {
-        if (canvasRef.current) {
-            const canvas = canvasRef.current;
+        const canvasEl = canvasRef.current?.canvas || canvasRef.current;
+        if (canvasEl) {
             const link = document.createElement('a');
             link.download = `strokehub-${roomId}-${Date.now()}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = canvasEl.toDataURL('image/png');
             link.click();
         }
     }, [roomId]);
@@ -386,6 +443,7 @@ export default function Room() {
                             speakingUsers={speakingUsers}
                             isMicOn={isMicOn}
                             onToggleMic={toggleMic}
+                            drawerId={currentDrawerId}
                         />
                         {scores.length > 0 && (
                             <div className="scoreboard">
@@ -428,6 +486,7 @@ export default function Room() {
                         brushSize={brushSize}
                         strokes={strokes}
                         onDraw={handleDraw}
+                        onDrawing={handleDrawing}
                         canDraw={canDraw}
                     />
                 </div>

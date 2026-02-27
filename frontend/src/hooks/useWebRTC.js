@@ -10,12 +10,21 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
     const audioContextRef = useRef(null);
     const analyzerRefs = useRef({}); // { [userId]: AnalyserNode }
     const speakingIntervalRef = useRef(null);
+    const micInitializedRef = useRef(false);
 
-    // 1. Initialize local microphone
+    const ICE_SERVERS = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+    ];
+
+    // 1. Initialize local microphone (muted by default)
     const startMicrophone = async () => {
+        if (micInitializedRef.current && localStreamRef.current) return true;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             localStreamRef.current = stream;
+            micInitializedRef.current = true;
 
             // Start muted by default
             stream.getAudioTracks().forEach(track => {
@@ -23,12 +32,18 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
             });
             setIsMicOn(false);
 
-            // Once mic is ready, tell others we are here so they can initiate connections
-            if (socket && isConnected) {
-                socket.emit('webrtc-ready', roomId);
-            }
-
             setupSpeakingDetection();
+
+            // Add tracks to any existing peers that don't have local tracks
+            Object.entries(peersRef.current).forEach(([userId, peer]) => {
+                const senders = peer.getSenders();
+                if (senders.length === 0 || !senders.find(s => s.track)) {
+                    stream.getTracks().forEach(track => {
+                        peer.addTrack(track, stream);
+                    });
+                }
+            });
+
             return true;
         } catch (err) {
             console.error("Error accessing microphone:", err);
@@ -45,7 +60,7 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
                 setIsMicOn(audioTrack.enabled);
             }
         } else {
-            // First time clicking mic
+            // First time clicking mic — initialize and enable
             startMicrophone().then(success => {
                 if (success && localStreamRef.current) {
                     const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -53,24 +68,39 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
                         audioTrack.enabled = true;
                         setIsMicOn(true);
                     }
+                    // After getting mic, connect to all existing users
+                    connectToExistingUsers();
                 }
             });
         }
-    }, [roomId, socket, isConnected]);
+    }, [roomId, socket, isConnected, users]);
 
-    // 3. Create a new RTCPeerConnection
+    // 3. Connect to all existing users in the room
+    const connectToExistingUsers = useCallback(() => {
+        if (!users || !user) return;
+        users.forEach(u => {
+            if (u.userId !== user.id && !peersRef.current[u.userId]) {
+                createPeer(u.userId, true);
+            }
+        });
+    }, [users, user]);
+
+    // 4. Create a new RTCPeerConnection
     const createPeer = useCallback((targetUserId, initiator) => {
         if (!socket) return null;
+
+        // If peer already exists and is connected/connecting, reuse it
         if (peersRef.current[targetUserId]) {
-            return peersRef.current[targetUserId];
+            const state = peersRef.current[targetUserId].connectionState;
+            if (state === 'connected' || state === 'connecting') {
+                return peersRef.current[targetUserId];
+            }
+            // Cleanup stale peer
+            peersRef.current[targetUserId].close();
+            delete peersRef.current[targetUserId];
         }
 
-        const peer = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        });
+        const peer = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
         // Add local stream if we have one
         if (localStreamRef.current) {
@@ -93,17 +123,40 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         peer.ontrack = (event) => {
             const [remoteStream] = event.streams;
 
-            // Create hidden audio element to play the stream
-            if (!audioElementsRef.current.has(targetUserId)) {
-                const audio = new Audio();
-                audio.srcObject = remoteStream;
+            // Create or update audio element
+            let audio = audioElementsRef.current.get(targetUserId);
+            if (!audio) {
+                audio = new Audio();
                 audio.autoplay = true;
-
-                // Keep track of audio elements for cleanup
                 audioElementsRef.current.set(targetUserId, audio);
+            }
 
-                // Connect to analyzer for speaking detection
-                setupRemoteAnalyzer(targetUserId, remoteStream);
+            audio.srcObject = remoteStream;
+
+            // Explicitly play with autoplay policy handling
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                    console.warn("Audio autoplay blocked for", targetUserId, "- will retry on user interaction");
+                    // Retry on next user interaction
+                    const retryPlay = () => {
+                        audio.play().catch(() => { });
+                        document.removeEventListener('click', retryPlay);
+                        document.removeEventListener('keydown', retryPlay);
+                    };
+                    document.addEventListener('click', retryPlay, { once: true });
+                    document.addEventListener('keydown', retryPlay, { once: true });
+                });
+            }
+
+            // Connect to analyzer for speaking detection
+            setupRemoteAnalyzer(targetUserId, remoteStream);
+        };
+
+        // Handle connection state changes
+        peer.onconnectionstatechange = () => {
+            if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
+                console.warn(`Peer ${targetUserId} connection ${peer.connectionState}, will cleanup`);
             }
         };
 
@@ -124,10 +177,15 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         return peer;
     }, [socket]);
 
-    // 4. Setup Speaking Detection (Volume Meters)
+    // 5. Setup Speaking Detection (Volume Meters)
     const setupRemoteAnalyzer = (userId, stream) => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Resume audio context if suspended
+        if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
         }
 
         try {
@@ -149,6 +207,7 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
 
             // Check all remote users
             Object.entries(analyzerRefs.current).forEach(([userId, analyzer]) => {
+                if (userId === 'local') return; // Handle local separately
                 const dataArray = new Uint8Array(analyzer.frequencyBinCount);
                 analyzer.getByteFrequencyData(dataArray);
 
@@ -181,7 +240,7 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
                     const average = sum / dataArray.length;
 
                     if (average > 10) {
-                        newSpeaking.add(user.id);
+                        newSpeaking.add(user?.id);
                     }
                 }
             }
@@ -198,7 +257,7 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         }, 200); // Check every 200ms
     };
 
-    // 5. Socket Listeners for Signaling
+    // 6. Socket Listeners for Signaling
     useEffect(() => {
         if (!socket || !isConnected) return;
 
@@ -229,6 +288,13 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         };
 
         const handleOffer = async ({ senderId, offer }) => {
+            // When receiving an offer, always create a fresh peer (non-initiator)
+            // Clean up any existing peer first
+            if (peersRef.current[senderId]) {
+                peersRef.current[senderId].close();
+                delete peersRef.current[senderId];
+            }
+
             const peer = createPeer(senderId, false);
             if (!peer) return;
 
@@ -282,7 +348,21 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         };
     }, [socket, isConnected, createPeer, user]);
 
-    // 6. Global Cleanup
+    // 7. When users list changes, try to connect to any users we don't have peers for
+    useEffect(() => {
+        if (!socket || !isConnected || !user || !localStreamRef.current) return;
+
+        users.forEach(u => {
+            if (u.userId !== user.id && !peersRef.current[u.userId]) {
+                // We have a mic but no peer for this user — initiate connection
+                setTimeout(() => {
+                    createPeer(u.userId, true);
+                }, 500);
+            }
+        });
+    }, [users, socket, isConnected, user, createPeer]);
+
+    // 8. Global Cleanup
     useEffect(() => {
         return () => {
             if (localStreamRef.current) {

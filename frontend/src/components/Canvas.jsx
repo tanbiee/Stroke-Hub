@@ -13,7 +13,7 @@ const hexToRgb = (hex) => {
 };
 
 const Canvas = forwardRef(function Canvas(
-    { tool, color, brushSize, strokes, onDraw, canDraw },
+    { tool, color, brushSize, strokes, onDraw, onDrawing, canDraw },
     ref
 ) {
     const canvasRef = useRef(null);
@@ -21,8 +21,29 @@ const Canvas = forwardRef(function Canvas(
     const currentStrokeRef = useRef(null);
     const snapshotRef = useRef(null); // Used for shape preview optimization
 
-    // Expose canvas element to parent
-    useImperativeHandle(ref, () => canvasRef.current);
+    // Expose canvas element and drawRemotePoint to parent
+    useImperativeHandle(ref, () => ({
+        get canvas() { return canvasRef.current; },
+        toDataURL: (...args) => canvasRef.current?.toDataURL(...args),
+        drawRemotePoint: (pointData) => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const { prevPoint, point, strokeColor, strokeSize, strokeType } = pointData;
+            if (!prevPoint || !point) return;
+
+            ctx.beginPath();
+            ctx.strokeStyle = strokeType === 'eraser' ? getCanvasBgColor() : strokeColor;
+            ctx.lineWidth = strokeSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.globalCompositeOperation = strokeType === 'eraser' ? 'destination-out' : 'source-over';
+            ctx.moveTo(prevPoint.x, prevPoint.y);
+            ctx.lineTo(point.x, point.y);
+            ctx.stroke();
+            ctx.globalCompositeOperation = 'source-over';
+        }
+    }));
 
     // Resize canvas to fill container
     useEffect(() => {
@@ -265,6 +286,17 @@ const Canvas = forwardRef(function Canvas(
             }
             ctx.stroke();
             ctx.globalCompositeOperation = 'source-over';
+
+            // Emit incremental point for real-time sync
+            if (onDrawing && pts.length >= 2) {
+                onDrawing({
+                    prevPoint: pts[pts.length - 2],
+                    point: pts[pts.length - 1],
+                    strokeColor: stroke.color,
+                    strokeSize: stroke.size,
+                    strokeType: stroke.type,
+                });
+            }
         } else if (tool === 'line' || tool === 'rect' || tool === 'circle') {
             // Shape tools: maintain only start and end points
             if (stroke.points.length > 1) {
