@@ -85,6 +85,13 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         });
     }, [users, user]);
 
+    // Auto-initialize microphone on mount (muted) so tracks are ready
+    useEffect(() => {
+        if (isConnected && !micInitializedRef.current) {
+            startMicrophone();
+        }
+    }, [isConnected]);
+
     // 4. Create a new RTCPeerConnection
     const createPeer = useCallback((targetUserId, initiator) => {
         if (!socket) return null;
@@ -264,10 +271,7 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
         const handleUserJoined = ({ userId }) => {
             // New user joined, WE start the WebRTC connection process as the initiator
             if (userId !== user?.id) {
-                // Wait briefly for new user's socket to fully seat
-                setTimeout(() => {
-                    createPeer(userId, true);
-                }, 1000);
+                createPeer(userId, true);
             }
         };
 
@@ -350,14 +354,11 @@ export default function useWebRTC(socket, roomId, user, isConnected, users) {
 
     // 7. When users list changes, try to connect to any users we don't have peers for
     useEffect(() => {
-        if (!socket || !isConnected || !user || !localStreamRef.current) return;
+        if (!socket || !isConnected || !user) return;
 
         users.forEach(u => {
             if (u.userId !== user.id && !peersRef.current[u.userId]) {
-                // We have a mic but no peer for this user — initiate connection
-                setTimeout(() => {
-                    createPeer(u.userId, true);
-                }, 500);
+                createPeer(u.userId, true);
             }
         });
     }, [users, socket, isConnected, user, createPeer]);

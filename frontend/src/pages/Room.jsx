@@ -61,7 +61,7 @@ export default function Room() {
     const { isMicOn, toggleMic, speakingUsers } = useWebRTC(socket, roomId, user, isConnected, users);
 
     // Sound effects
-    const { playGameStart, playCorrectGuess, playConfetti, playTimerTick, playRoundEnd } = useSoundEffects();
+    const { playGameStart, playCorrectGuess, playConfetti, playTimerTick, playRoundEnd, playGameOver, playPlayerJoin, playYourTurn } = useSoundEffects();
 
     // Drawer tracking
     const [currentDrawerId, setCurrentDrawerId] = useState(null);
@@ -100,6 +100,7 @@ export default function Room() {
                 if (prev.find(u => u.userId === userId)) return prev;
                 return [...prev, { userId, username, online: true }];
             });
+            playPlayerJoin();
         };
         const handleUserLeft = ({ userId }) => {
             setUsers(prev => prev.filter(u => u.userId !== userId));
@@ -135,6 +136,7 @@ export default function Room() {
         const handleSelectWordOptions = (options) => {
             setWordOptions(options);
             setIsDrawer(true);
+            playYourTurn();
         };
         const handleWordSelected = ({ hint, drawer }) => {
             setCurrentWord(hint);
@@ -183,6 +185,7 @@ export default function Room() {
             setCurrentWord('');
             setIsDrawer(false);
             setRoundMessage('Game Over! 🏆');
+            playGameOver();
 
             // Show confetti for the winner
             if (finalScores && finalScores.length > 0) {

@@ -25,7 +25,7 @@ export default function UserPresence({ users, hostId, currentUserId, onKickPlaye
                                     {u.userId === currentUserId && ' (You)'}
                                 </span>
                                 {isDrawing && (
-                                    <span className="badge badge-drawer">🎨 Drawing</span>
+                                    <span className="badge badge-drawer">✏️</span>
                                 )}
                                 {u.userId === hostId && (
                                     <span className="badge badge-host">Host</span>

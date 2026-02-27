@@ -339,11 +339,6 @@ const Canvas = forwardRef(function Canvas(
                 onTouchMove={draw}
                 onTouchEnd={stopDrawing}
             />
-            {!canDraw && (
-                <div className="canvas-overlay">
-                    <p>👀 Watch the drawer!</p>
-                </div>
-            )}
         </div>
     );
 });
