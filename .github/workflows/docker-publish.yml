@@ -7,8 +7,8 @@ on:
     branches: [ "main", "master" ]
 
 env:
-  DOCKER_HUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_PASSWORD }}
 
 jobs:
   build-and-push:
