@@ -32,4 +32,4 @@ Once both are deployed, you MUST update your Google Cloud Console to allow the l
 2. Edit your OAuth 2.0 Client ID.
 3. Under **Authorized JavaScript origins**, add your Vercel URL (e.g., `https://strokehub.vercel.app`).
 4. Under **Authorized redirect URIs**, add the same Vercel URL.
-5. Click **Save**. Google Login will now work in production!
+5. Click **Save**. Google Login will now work in production!!
